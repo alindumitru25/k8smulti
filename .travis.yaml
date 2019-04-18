@@ -1,0 +1,27 @@
+sudo: required
+services:
+  - docker
+env:
+    global:
+      - SHA=$(git rev-parse HEAD)
+      - CLOUDSDK_CORE_DISABLE_PROMPTS=1
+before_install:
+  - curl https://sdk.cloud.google.com | bash > /dev/null;
+  - source $HOME/google-cloud-sdk/path.bash.inc
+  - gcloud components update kubectl
+  - gcloud auth active-service-account --key-file service-account.json
+  - gcloud config set project skitful-berm-212356
+  - gcloud config set compute/zone us-central1-a
+  - gcloud container clusters get-credentials multi-cluster
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - docker build -t alindumitru255/react-test -f ./client/Dockerfile.dev ./client
+
+script:
+  - docker run alindumitru255/react-test npm test -- --coverage
+
+deploy:
+  # travis doesn't have automatically provider for kubernetes like it does for elastibeanstalk so we must tell him manually how to do it.
+  provider: script
+  script: bash ./deploy.sh
+  on:
+    branch: master
